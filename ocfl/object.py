@@ -525,7 +525,7 @@ class Object():
         passed = validator.validate(objdir)
         messages = str(validator)
         if messages != '':
-            print(messages)
+            self.log.info(messages)
         if passed:
             self.log.info("OCFL object at %s is VALID", objdir)
         else:
@@ -547,7 +547,7 @@ class Object():
         passed = (validator.log.num_errors == 0)
         messages = str(validator)
         if messages != '':
-            print(messages)
+            self.log.info(messages)
         if passed:
             self.log.info("Standalone OCFL inventory at %s is VALID", path)
         else:

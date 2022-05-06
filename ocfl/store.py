@@ -44,7 +44,7 @@ class Store():
         self.num_traversal_errors = 0
         self.extension = None
         self.description = None
-        self.log = None
+        self.log = logging.getLogger("ocfl-store") # None
         self.num_objects = 0
         self.good_objects = 0
 
@@ -70,7 +70,7 @@ class Store():
         self.num_traversal_errors += 1
         if self.log is None:  # FIXME - What to do in non-validator context?
             args = ', '.join('{0}={1!r}'.format(k, v) for k, v in kwargs.items())
-            logging.error("Traversal error %s - %s", code, args)
+            self.log.error("Traversal error %s - %s", code, args)
         else:
             self.log.error(code, **kwargs)
 
@@ -85,7 +85,7 @@ class Store():
         if parent_fs.exists(root_dir):
             raise StoreException("OCFL storage root %s already exists, aborting!" % (self.root))
         self.root_fs = parent_fs.makedir(root_dir)
-        logging.debug("Created OCFL storage root at %s", self.root)
+        self.log.debug("Created OCFL storage root at %s", self.root)
         # Create root declaration
         Namaste(d=0, content=self.declaration_tvalue).write(pyfs=self.root_fs)
         # Create a layout declaration
@@ -94,7 +94,7 @@ class Store():
                 layout = {'extension': self.disposition,
                           'description': "Non-standard layout from ocfl-py disposition -- FIXME"}
                 json.dump(layout, fh, sort_keys=True, indent=2)
-        logging.info("Created OCFL storage root %s", self.root)
+        self.log.info("Created OCFL storage root %s", self.root)
 
     def check_root_structure(self):
         """Check the OCFL storage root structure.
@@ -203,10 +203,10 @@ class Store():
             with ocfl_opendir(self.root_fs, dirpath) as obj_fs:
                 # Parse inventory to extract id
                 id = Object(obj_fs=obj_fs).id_from_inventory()
-                print("%s -- id=%s" % (dirpath, id))
+                self.log.debug("%s -- id=%s" % (dirpath, id))
                 self.num_objects += 1
                 # FIXME - maybe do some more stuff in here
-        logging.info("Found %d OCFL Objects under root %s", self.num_objects, self.root)
+        self.log.info("Found %d OCFL Objects under root %s", self.num_objects, self.root)
 
     def validate_hierarchy(self, validate_objects=True, check_digests=True, show_warnings=False):
         """Validate storage root hierarchy.
@@ -225,42 +225,43 @@ class Store():
                 if validator.validate(ocfl_opendir(self.root_fs, dirpath)):
                     good_objects += 1
                 else:
-                    logging.info("Object at %s in INVALID", dirpath)
+                    self.log.info("Object at %s in INVALID", dirpath)
                 messages = validator.__str__(prefix='[[' + dirpath + ']]')  # FIXME - how to show warnings sensibly?
                 if messages != '':
-                    print(messages)
+                    self.log.info(messages)
                 num_objects += 1
         return num_objects, good_objects
 
     def validate(self, validate_objects=True, check_digests=True, show_warnings=False, show_errors=True, lang='en'):
         """Validate OCFL storage root and optionally all objects."""
         valid = True
-        self.log = ValidationLogger(show_warnings=show_warnings, show_errors=show_errors, lang=lang)
+        if self.log == None:
+            self.log = ValidationLogger(show_warnings=show_warnings, show_errors=show_errors, lang=lang)
         self.open_root_fs()
         try:
             self.check_root_structure()
-            logging.info("Storage root structure is VALID")
+            self.log.info("Storage root structure is VALID")
         except StoreException as e:
             valid = False
-            logging.info("Storage root structure is INVALID (%s)", str(e))
+            self.log.info("Storage root structure is INVALID (%s)", str(e))
         self.num_objects, self.good_objects = self.validate_hierarchy(validate_objects=validate_objects, check_digests=check_digests, show_warnings=show_warnings)
         if validate_objects:
             if self.good_objects == self.num_objects:
-                logging.info("Objects checked: %d / %d are VALID", self.good_objects, self.num_objects)
+                self.log.info("Objects checked: %d / %d are VALID", self.good_objects, self.num_objects)
             else:
                 valid = False
-                logging.info("Objects checked: %d / %d are INVALID", self.num_objects - self.good_objects, self.num_objects)
+                self.log.info("Objects checked: %d / %d are INVALID", self.num_objects - self.good_objects, self.num_objects)
         else:
-            logging.info("Not checking OCFL objects")
-        print(str(self.log))
+            self.log.info("Not checking OCFL objects")
+        # print(str(self.log))
         if self.num_traversal_errors > 0:
             valid = False
-            logging.info("Encountered %d errors traversing storage root", self.num_traversal_errors)
+            self.log.info("Encountered %d errors traversing storage root", self.num_traversal_errors)
         # FIXME - do some stuff in here
         if valid:
-            logging.info("Storage root %s is VALID", self.root)
+            self.log.info("Storage root %s is VALID", self.root)
         else:
-            logging.info("Storage root %s is INVALID", self.root)
+            self.log.info("Storage root %s is INVALID", self.root)
         return valid
 
     def add(self, object_path):
@@ -274,10 +275,10 @@ class Store():
         identifier = inventory['id']
         # Now copy
         path = self.object_path(identifier)
-        logging.info("Copying from %s to %s", object_path, fs.path.join(self.root, path))
+        self.log.info("Copying from %s to %s", object_path, fs.path.join(self.root, path))
         try:
             copy_dir(o.obj_fs, '/', self.root_fs, path)
-            logging.info("Copied")
+            self.log.info("Copied")
         except Exception as e:
-            logging.error("Copy failed: %s", str(e))
+            self.log.error("Copy failed: %s", str(e))
             raise StoreException("Add object failed!")
