@@ -76,7 +76,13 @@ class Store():
 
     def object_path(self, identifier):
         """Path to OCFL object with given identifier relative to the OCFL storage root."""
-        return self.dispositor.identifier_to_path(identifier)
+        # Try to find the path by looking at all objects in the store
+        paths = [o['path'] for o in self.list() if o['id'] == identifier]
+        if len(paths) == 1:
+            return paths[0]
+        else:
+            # If object does not exist in store create a new path using the dispositor
+            return self.dispositor.identifier_to_path(identifier)
 
     def initialize(self):
         """Create and initialize a new OCFL storage root."""
@@ -199,6 +205,7 @@ class Store():
         self.open_root_fs()
         self.check_root_structure()
         self.num_objects = 0
+        objs = []
         for dirpath in self.object_paths():
             with ocfl_opendir(self.root_fs, dirpath) as obj_fs:
                 # Parse inventory to extract id
@@ -206,7 +213,9 @@ class Store():
                 self.log.debug("%s -- id=%s" % (dirpath, id))
                 self.num_objects += 1
                 # FIXME - maybe do some more stuff in here
+                objs.append({"id":id,"path":dirpath})
         self.log.info("Found %d OCFL Objects under root %s", self.num_objects, self.root)
+        return objs
 
     def validate_hierarchy(self, validate_objects=True, check_digests=True, show_warnings=False):
         """Validate storage root hierarchy.
