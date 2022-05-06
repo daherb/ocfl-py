@@ -44,7 +44,7 @@ class Store():
         self.num_traversal_errors = 0
         self.extension = None
         self.description = None
-        self.log = logging.getLogger("ocfl-store") # None
+        self.log = logging.getLogger("ocfl-store")
         self.num_objects = 0
         self.good_objects = 0
 
@@ -213,7 +213,7 @@ class Store():
                 self.log.debug("%s -- id=%s" % (dirpath, id))
                 self.num_objects += 1
                 # FIXME - maybe do some more stuff in here
-                objs.append({"id":id,"path":dirpath})
+                objs.append({"id": id, "path": dirpath})
         self.log.info("Found %d OCFL Objects under root %s", self.num_objects, self.root)
         return objs
 
@@ -244,7 +244,7 @@ class Store():
     def validate(self, validate_objects=True, check_digests=True, show_warnings=False, show_errors=True, lang='en'):
         """Validate OCFL storage root and optionally all objects."""
         valid = True
-        if self.log == None:
+        if self.log is None:
             self.log = ValidationLogger(show_warnings=show_warnings, show_errors=show_errors, lang=lang)
         self.open_root_fs()
         try:
